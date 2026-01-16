@@ -97,6 +97,7 @@ jobs:
         # GitHub App setup that can be used instead
         github_token: ${{ secrets.LLAMA_REPOS_PAT }}
         npm_token: ${{ secrets.NPM_TOKEN }}
+        test_pypi_token: ${{ secrets.TEST_PYPI_TOKEN }}
 
   test-published-package:
     needs:

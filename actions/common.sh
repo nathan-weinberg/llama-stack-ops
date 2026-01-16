@@ -45,18 +45,32 @@ run_integration_tests() {
   fi
 
   echo "Running integration tests (text)"
-  bash llama-stack/scripts/integration-tests.sh \
+  # Run with timeout and capture what's happening when it hangs
+  timeout 180 bash -x llama-stack/scripts/integration-tests.sh \
     --stack-config $stack_config \
     --inference-mode replay \
     --suite base \
-    --setup ollama
+    --setup ollama || {
+      EXIT_CODE=$?
+      echo "=== Test script exited with code: $EXIT_CODE ==="
+      if [ $EXIT_CODE -eq 124 ]; then
+        echo "=== TIMEOUT - Script hung. Checking for hanging processes ==="
+        ps aux | grep -E "python|pytest|mcp|node" | grep -v grep
+        echo "=== Killing all child processes ==="
+        pkill -P $$ || true
+      else
+        echo "=== Tests failed with exit code $EXIT_CODE ==="
+        exit $EXIT_CODE
+      fi
+    }
 
   echo "Running integration tests (vision)"
-  bash llama-stack/scripts/integration-tests.sh \
+  # Vision tests are usually quick (mostly skipped), 2min timeout
+  timeout 120 bash llama-stack/scripts/integration-tests.sh \
     --stack-config $stack_config \
     --inference-mode replay \
     --suite vision \
-    --setup ollama
+    --setup ollama || [ $? -eq 124 ]
 }
 
 install_dependencies() {

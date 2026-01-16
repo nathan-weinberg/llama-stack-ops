@@ -13,6 +13,9 @@ inputs:
   npm_token:
     description: 'NPM token'
     required: true
+  test_pypi_token:
+    description: 'TestPyPI token for uploading packages'
+    required: false
 
 runs:
   using: 'composite'
@@ -42,6 +45,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github_token }}
         LLAMA_STACK_ONLY: ${{ inputs.llama_stack_only }}
         NPM_TOKEN: ${{ inputs.npm_token }}
+        TEST_PYPI_TOKEN: ${{ inputs.test_pypi_token }}
       run: |
         chmod +x ${{ github.action_path }}/main.sh
         ${{ github.action_path }}/main.sh

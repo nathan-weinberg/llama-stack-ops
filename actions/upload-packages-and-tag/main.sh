@@ -43,8 +43,10 @@ run_precommit_lockfile_update() {
     exit 1
   fi
   echo "Running pre-commit to update lockfiles..."
+  # Exclude third-party packages without wheels on test.pypi (psycopg2-binary)
   UV_EXTRA_INDEX_URL="https://test.pypi.org/simple/" \
     UV_INDEX_STRATEGY="unsafe-best-match" \
+    UV_NO_BUILD_ISOLATION_PACKAGE="psycopg2-binary" \
     LLAMA_STACK_RELEASE_MODE=true \
     pre-commit run --all-files || true
   echo "pre-commit run completed."
@@ -140,19 +142,33 @@ for repo in "${REPOS[@]}"; do
     cd ..
   else
     echo "Uploading llama-$repo to testpypi"
+    # Use OIDC/trusted publishing for main packages
     python -m twine upload \
       --repository-url https://test.pypi.org/legacy/ \
       --skip-existing \
       dist/*.whl dist/*.tar.gz
 
-    # Upload llama_stack_api if it exists
+    # Upload llama_stack_api if it exists (needs token auth)
     if [ "$repo" == "stack" ] && [ -d "src/llama_stack_api" ] && [ -f "src/llama_stack_api/pyproject.toml" ]; then
       echo "Uploading llama_stack_api to testpypi"
       cd src/llama_stack_api
-      python -m twine upload \
-        --repository-url https://test.pypi.org/legacy/ \
-        --skip-existing \
-        dist/*.whl dist/*.tar.gz
+      if [ -n "${TEST_PYPI_TOKEN:-}" ]; then
+        # Use token authentication for llama-stack-api (disable command echo)
+        set +x
+        python -m twine upload \
+          --repository-url https://test.pypi.org/legacy/ \
+          --username __token__ \
+          --password "$TEST_PYPI_TOKEN" \
+          --skip-existing \
+          dist/*.whl dist/*.tar.gz
+        set -x
+      else
+        # Fallback to OIDC/trusted publishing
+        python -m twine upload \
+          --repository-url https://test.pypi.org/legacy/ \
+          --skip-existing \
+          dist/*.whl dist/*.tar.gz
+      fi
       cd -
     fi
   fi
